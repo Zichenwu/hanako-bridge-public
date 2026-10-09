@@ -1,0 +1,84 @@
+[package]
+name = "hanako-tauri"
+version = "0.1.0"
+description = "Hanako 桌面客户端——云端 agent 的本地执行节点"
+edition = "2021"
+rust-version = "1.75"
+
+[lib]
+# Tauri 2 推荐 lib + main 分离，lib 承载装配逻辑便于测试
+name = "hanako_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+# 注意：tauri-build 与 tauri 版本号不同步（tauri 2.11.5 / tauri-build 最高 2.6.3）。
+# 用 "2" 让 cargo 解析到 tauri-build 最新 2.x。
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+# tray-icon: 托盘菜单（Task 6 B7）
+tauri = { version = "2.11", features = ["tray-icon"] }
+# tauri-plugin-dialog: 原生文件夹选择器（Task 6 pick_workspace_dir）
+tauri-plugin-dialog = "2"
+# tauri-plugin-notification: 系统通知（票 17：断开 / 恢复 / 跨机使用提醒）
+tauri-plugin-notification = "2"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+futures-util = "0.3"
+url = "2"
+log = "0.4"
+thiserror = "1"
+regex = "1"
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+# dirs-next: 跨平台 home_dir（workspaces.json 持久化路径）
+dirs-next = "2"
+# hostname: 读取机器主机名（node_id 默认值）
+hostname = "0.4"
+# ureq: 同步 HTTP 客户端，授权码登录/续期（票 14）。reqwest 在 Linux 上不在 tauri 依赖树里，不能借用。
+# 走 rustls，不依赖系统 openssl；调用方用 spawn_blocking 包一层。
+ureq = { version = "3", default-features = false, features = ["rustls", "json"] }
+# webbrowser: 用系统默认浏览器打开授权确认页（票 14）。仅依赖 url/log，无系统库。
+webbrowser = "1"
+# 本机抽取 Office/PDF（票 18）。选型见 docs/local-client 决策文档 §3.2 票 18 实测节。
+# calamine: xlsx/xls/ods 读表（纯 Rust）；zip + quick-xml: docx/pptx 本质是 zip 里的 OOXML，自己抽文本比引入 docx-rs 轻；
+# pdf-extract: PDF 文本（底层 lopdf，纯 Rust）。全部关掉默认特性，避免拉入无关功能。
+calamine = { version = "0.36", default-features = false }
+zip = { version = "8", default-features = false, features = ["deflate"] }
+quick-xml = "0.41"
+pdf-extract = "0.9"
+# sha2: 由规范化路径派生稳定 rootId（票 13；已在 Cargo.lock 中，无新增下载）
+sha2 = "0.10"
+base64 = "0.22"
+
+# keyring: 系统钥匙串（票 14）。⚠️ 3.x 不开平台 feature 时退化为内存 mock——
+# set 成功、重启后 get 不到，且不报错。每个平台必须显式开对应后端。
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["apple-native"] }
+# user-idle: 本机键鼠空闲秒数（票 17：来源判别 + 跨机网页确认门槛）。
+# ⚠️ 只在 Windows / macOS 启用（default-features = false 关掉 Linux 的 x11/dbus 后端）：
+# Linux 的 x11 后端要 libxss 系统包，分发目标是 Win/mac，Linux 仅开发/CI。
+# Linux 下 idle_seconds() 恒返回 None = 不上报空闲 → 服务端按「信号不足」处理，网页确认开关 fail-closed。
+user-idle = { version = "0.6", default-features = false }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["windows-native"] }
+# winreg: 读 Internet Settings\ProxyServer，直连失败时退回系统代理（net_proxy.rs；已在 lock 中）
+winreg = "0.55"
+user-idle = { version = "0.6", default-features = false }
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+keyring = { version = "3", default-features = false, features = ["sync-secret-service", "crypto-rust"] }
+
+# 审核 B-F3/F4：抽取子进程自设 RLIMIT_AS（已在依赖树中，非新增下载）
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[features]
+# Tauri 要求：release 用 custom-protocol（生产加载本地资源），dev 可省略
+custom-protocol = ["tauri/custom-protocol"]

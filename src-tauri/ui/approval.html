@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hanako 确认</title>
+  <link rel="stylesheet" href="approval.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="icon">⚠️</div>
+      <h2>Hanako 需要修改你的文件</h2>
+    </div>
+
+    <div class="info-card">
+      <div class="info-row">
+        <span class="label">Agent</span>
+        <span class="value" id="agent">—</span>
+      </div>
+      <div class="info-row">
+        <span class="label">操作</span>
+        <span class="value op-badge" id="op">—</span>
+      </div>
+      <div class="info-row">
+        <span class="label">路径</span>
+        <span class="value path" id="path">—</span>
+      </div>
+    </div>
+
+    <div id="backup-row" class="backup" style="display:none">
+      <span class="backup-icon">✓</span>
+      <span id="backup"></span>
+    </div>
+
+    <div id="diff-wrapper" style="display:none">
+      <div class="diff-label">变更预览</div>
+      <pre id="diff" class="diff"></pre>
+    </div>
+
+    <div id="loading" class="loading">加载中…</div>
+    <div id="no-pending" class="no-pending" style="display:none">无待确认请求</div>
+
+    <div id="buttons" class="buttons" style="display:none">
+      <button id="reject" class="btn btn-reject" data-decision="rejected">拒绝</button>
+      <!-- 审核 #5：「本次会话信任此目录」已移除——守护进程固定 ApprovalMode::Strict（client.rs），点了不生效。 -->
+      <button id="approve" class="btn btn-approve" data-decision="approved">同意</button>
+    </div>
+  </div>
+
+  <!-- 禁用 iframe（CVE-2024-35222）：本文件不含任何 iframe -->
+  <script src="approval.js"></script>
+</body>
+</html>

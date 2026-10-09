@@ -1,0 +1,202 @@
+/* approval.css — Hanako 确认窗口样式（极简，~4KB） */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: #1b1f26;
+  color: #dde3ea;
+  font-size: 14px;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  width: 480px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 标题区 */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header .icon {
+  font-size: 20px;
+}
+
+.header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f0f4f8;
+}
+
+/* 信息卡片 */
+.info-card {
+  background: #252b34;
+  border: 1px solid #333d4a;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.label {
+  min-width: 48px;
+  color: #7a8897;
+  font-size: 12px;
+  padding-top: 1px;
+  flex-shrink: 0;
+}
+
+.value {
+  color: #dde3ea;
+  word-break: break-all;
+}
+
+.value.path {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 12px;
+  color: #a8c4de;
+}
+
+/* 操作类型徽章 */
+.op-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #2d3a45;
+  color: #8ab4d4;
+}
+
+.op-badge.op-delete {
+  background: #3d2020;
+  color: #f08080;
+}
+
+.op-badge.op-write {
+  background: #1e3020;
+  color: #80d890;
+}
+
+.op-badge.op-edit {
+  background: #1e2f3d;
+  color: #80b8e0;
+}
+
+/* 备份提示 */
+.backup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #5a8a5a;
+  background: #1a2a1a;
+  border: 1px solid #2a4a2a;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.backup-icon {
+  color: #60b860;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* diff 预览 */
+.diff-label {
+  font-size: 11px;
+  color: #7a8897;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+pre.diff {
+  background: #141a22;
+  border: 1px solid #2a3344;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #b8c8d8;
+  overflow: auto;
+  max-height: 160px;
+  white-space: pre;
+}
+
+/* 加载 / 无请求状态 */
+.loading,
+.no-pending {
+  text-align: center;
+  color: #7a8897;
+  font-size: 13px;
+  padding: 16px 0;
+}
+
+/* 按钮区 */
+.buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn:hover {
+  opacity: 0.85;
+}
+
+.btn:active {
+  opacity: 0.7;
+  transform: translateY(1px);
+}
+
+.btn-reject {
+  background: #3d2020;
+  color: #e88080;
+  border: 1px solid #5a2a2a;
+}
+
+.btn-trust {
+  background: #1e2f3d;
+  color: #80b8e0;
+  border: 1px solid #2a4a5a;
+  font-size: 12px;
+}
+
+.btn-approve {
+  background: #1a3a2a;
+  color: #60d890;
+  border: 1px solid #2a5a3a;
+}

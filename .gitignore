@@ -1,0 +1,15 @@
+# 构建产物
+src-tauri/target/
+src-tauri/gen/
+
+# 保留 Cargo.lock（应用而非库，应提交以锁版本）
+!src-tauri/Cargo.lock
+
+# 系统/编辑器
+.DS_Store
+*.log
+node_modules/
+
+# 本地下载的 CI 产物 / git worktree 工作区
+releases/
+.worktrees/

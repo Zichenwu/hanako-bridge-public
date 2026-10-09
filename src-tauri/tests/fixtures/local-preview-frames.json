@@ -1,0 +1,55 @@
+{
+  "$comment": "本地文件预览 票07 分片协议的共享契约样例。openhanako 与 hanako-tauri 各存一份逐字节相同的拷贝，两仓测试各读自己那份并断言其 SHA-256；改任一字段名/类型，两边测试同时变红。改动后必须两仓一起改、一起更新测试里的哈希常量。",
+  "contractVersion": 2,
+  "constants": {
+    "chunkBytes": 4194304,
+    "window": 3,
+    "capability": 2
+  },
+  "serverToBridge": {
+    "preview_request": {
+      "type": "preview_request",
+      "previewId": "pv_contract_1",
+      "path": "docs/report.pdf",
+      "agentId": "bi--zhangsan",
+      "rootId": "r_contract",
+      "origin": "local_web",
+      "sessionId": "s1",
+      "transfer": "chunked"
+    },
+    "preview_pull": {
+      "type": "preview_pull",
+      "previewId": "pv_contract_1",
+      "upTo": 3
+    },
+    "preview_abort": {
+      "type": "preview_abort",
+      "previewId": "pv_contract_1",
+      "code": "LOCAL_PREVIEW_BUSY"
+    }
+  },
+  "bridgeToServer": {
+    "preview_meta": {
+      "type": "preview_meta",
+      "previewId": "pv_contract_1",
+      "size": 5,
+      "truncated": false
+    },
+    "preview_chunk": {
+      "type": "preview_chunk",
+      "previewId": "pv_contract_1",
+      "seq": 0,
+      "data": "aGVsbG8="
+    },
+    "preview_end": {
+      "type": "preview_end",
+      "previewId": "pv_contract_1"
+    },
+    "preview_abort": {
+      "type": "preview_abort",
+      "previewId": "pv_contract_1",
+      "code": "LOCAL_PREVIEW_RETRY",
+      "message": "contract-sample"
+    }
+  }
+}
