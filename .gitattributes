@@ -1,0 +1,2 @@
+# 契约样例按字节算 SHA-256，Windows runner 的 autocrlf 会转 CRLF 致哈希不符，钉死 LF
+src-tauri/tests/fixtures/** -text

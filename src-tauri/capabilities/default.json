@@ -1,0 +1,22 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "默认能力：approval + settings + onboarding + auth-request 本地窗口，无 remote（spec §3.1 红线）；票 13 起不再有加载云端网页的 main 窗口",
+  "windows": [
+    "approval",
+    "settings",
+    "onboarding",
+    "auth-request",
+    "upload-ask",
+    "preview-ask"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:webview:allow-create-webview-window",
+    "dialog:allow-open",
+    "notification:default"
+  ]
+}

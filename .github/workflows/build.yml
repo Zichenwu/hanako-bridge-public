@@ -1,0 +1,204 @@
+name: Build
+
+# 出包走 GitHub Actions 免费 runner——本机是 Linux，Tauri 的 Windows 包必须在
+# Windows 上编（MSVC 工具链 + NSIS），mac 包必须在 macOS 上编。这与 Electron-builder
+# 完全相同，不是 Tauri 的额外成本。
+#
+# 触发方式：
+#   · 手动（Actions 页点 Run workflow）→ 产物存 artifact，7 天
+#   · 打 tag v* → 同时建 GitHub Release 附产物
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: '要出哪些平台'
+        required: true
+        default: 'windows'
+        type: choice
+        options: [windows, 'windows+macos', all]
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      # 一个平台失败不连累其它平台（Windows 是主力，别被 mac 签名问题卡住）
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows-x64
+            rust-target: x86_64-pc-windows-msvc
+            bundles: nsis
+            enabled-for: 'windows,windows+macos,all'
+          - os: macos-latest
+            name: macos-arm64
+            rust-target: aarch64-apple-darwin
+            bundles: dmg
+            enabled-for: 'windows+macos,all'
+          - os: macos-latest
+            name: macos-x64
+            rust-target: x86_64-apple-darwin
+            bundles: dmg
+            enabled-for: 'windows+macos,all'
+          - os: ubuntu-22.04
+            name: linux-x64
+            rust-target: x86_64-unknown-linux-gnu
+            bundles: deb
+            enabled-for: 'all'
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # 手动触发用 inputs；tag 触发出全平台（发版）；push 到 master 只出 windows
+      # （主力平台，省 CI 额度——private 仓 Actions 有月度分钟数，Windows runner 2× 倍率）
+      - name: 判断本平台是否参与本次构建
+        id: gate
+        shell: bash
+        run: |
+          WANT="${{ github.event.inputs.platforms }}"
+          if [ -z "$WANT" ]; then
+            case "${{ github.ref_type }}" in
+              tag) WANT="all" ;;
+              *)   WANT="windows" ;;
+            esac
+          fi
+          echo "本次目标: $WANT"
+          if echo "${{ matrix.enabled-for }}" | tr ',' '\n' | grep -qx "$WANT"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "跳过 ${{ matrix.name }}（本次只出 $WANT）"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+
+      - name: 安装 Rust 工具链
+        if: steps.gate.outputs.run == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
+
+      # Cargo 缓存：Tauri 依赖树大，冷编译 10 分钟以上
+      - name: Cargo 缓存
+        if: steps.gate.outputs.run == 'true'
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.name }}
+
+      # Linux 才需要系统依赖（WebKitGTK）；Win/mac 用系统自带 WebView2/WKWebView
+      - name: 安装 Linux 系统依赖
+        if: steps.gate.outputs.run == 'true' && runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
+            librsvg2-dev patchelf libssl-dev
+
+      - name: 安装 tauri-cli
+        if: steps.gate.outputs.run == 'true'
+        run: cargo install tauri-cli --version '^2.11' --locked
+
+      # ⭐ 安全断言：Tauri 必须 ≥2.10.3（CVE-2026-42184 CVSS 8.8 修复版，
+      # is_local_url() 绕过会让远程子域被误判为本地来源直取 IPC 权限）。
+      # 票 13 起已无加载远程 URL 的主窗口，但 Tauri 自身的 IPC/权限面仍受此 CVE 影响，
+      # 这条不可放松——故在 CI 里卡死，不靠人记。
+      - name: 校验 Tauri 版本下限（安全红线）
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        run: bash scripts/check-tauri-version.sh
+
+      - name: 单测
+        if: steps.gate.outputs.run == 'true'
+        working-directory: src-tauri
+        env:
+          # 与构建步同一 secret：单测 `默认地址_编译期注入` 据此断言注入真正到达 rustc
+          HANAKO_DEFAULT_HUB_URL: ${{ secrets.HANAKO_DEFAULT_HUB_URL }}
+          HANAKO_EXPECT_INJECTED_HUB: "1"
+        run: cargo test --lib --tests
+
+      # 构建号：公开镜像仓里有 `.source-sha`（私有源仓的 commit），以它为准——网页「有新版」比对、
+      # latest.json 都认源仓 sha；没有该文件（直接在私有源仓跑）就用本仓 github.sha。
+      - name: 定构建号
+        if: steps.gate.outputs.run == 'true'
+        id: sha
+        shell: bash
+        run: |
+          if [ -f .source-sha ]; then echo "sha=$(tr -d '[:space:]' < .source-sha)" >> "$GITHUB_OUTPUT"
+          else echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"; fi
+
+      # 默认服务端地址不写在源码里（公开镜像脱敏），从 secret 注入。缺失就失败——
+      # 否则会出一个默认连 hub.invalid、谁都登录不上的包。
+      - name: 校验默认服务端地址已配置
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        env:
+          HUB: ${{ secrets.HANAKO_DEFAULT_HUB_URL }}
+        run: |
+          case "$HUB" in https://*) echo "默认服务端地址已配置" ;; *) echo "::error::缺少 secret HANAKO_DEFAULT_HUB_URL（https://...）"; exit 1 ;; esac
+
+      - name: 构建安装包
+        if: steps.gate.outputs.run == 'true'
+        env:
+          # 编译期注入构建号 → appVersion 形如 0.1.0+g1a2b3c4，真机/服务端可分辨新旧包（票 07）
+          HANAKO_BUILD_SHA: ${{ steps.sha.outputs.sha }}
+          HANAKO_DEFAULT_HUB_URL: ${{ secrets.HANAKO_DEFAULT_HUB_URL }}
+        run: cargo tauri build --target ${{ matrix.rust-target }} --bundles ${{ matrix.bundles }}
+
+      # 安装包会压缩可执行文件，发布侧查不准；在这里直接查未压缩的二进制
+      - name: 校验可执行文件已注入服务端地址
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        env:
+          HUB: ${{ secrets.HANAKO_DEFAULT_HUB_URL }}
+        run: |
+          HOST=$(echo "$HUB" | sed -E 's#https://([^/]+).*#\1#')
+          DIR=src-tauri/target/${{ matrix.rust-target }}/release
+          # 主可执行文件名固定（Cargo [package].name）；Windows 带 .exe。逐个列出，排查时一眼可见
+          BIN=""
+          for c in "$DIR/hanako-tauri" "$DIR/hanako-tauri.exe"; do [ -f "$c" ] && BIN="$c"; done
+          ls -la "$DIR" | grep -i hanako || true
+          [ -n "$BIN" ] || { echo "::error::找不到主可执行文件"; exit 1; }
+          # 只做「残留占位」这一条硬检查：发现 hub.invalid = 构建时没注入。
+          # 「含真实域名」不再用 grep 判（10-09：macOS x64 交叉编译产物里 grep 不到、arm64 能，误报）；
+          # 注入是否到达 rustc 由单测 `默认地址_编译期注入` 在同一 secret 下断言。
+          if LC_ALL=C grep -aq 'hub.invalid' "$BIN"; then echo "::error::二进制里残留 hub.invalid 占位"; exit 1; fi
+          LC_ALL=C grep -aqF "$HOST" "$BIN" && echo "已注入（二进制可见域名）" || echo "::warning::二进制里 grep 不到域名（可能被编译器拆分存储）；以单测断言为准"
+
+
+      - name: 收集产物
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        run: |
+          mkdir -p dist
+          B="src-tauri/target/${{ matrix.rust-target }}/release/bundle"
+          # 只收安装包，不收裸 exe（裸 exe 缺 WebView2 引导，用户装不上）
+          find "$B" -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \
+            -o -name '*.AppImage' -o -name '*.deb' \) -exec cp {} dist/ \; 2>/dev/null || true
+          echo "── 产物 ──"
+          ls -lh dist/ || echo "（无产物，构建可能失败）"
+          # 包体是本项目的卖点（预估 7~17MB），显式打出来便于回归对比
+          du -sh dist/ 2>/dev/null || true
+
+      - name: 上传 artifact
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hanako-${{ matrix.name }}
+          path: dist/*
+          # 公开仓的 artifact 任何人可下，安装包内含默认服务端地址 → 只留 1 天（发布脚本当天就取走）
+          retention-days: 1
+          if-no-files-found: error
+
+      # 只有打 tag 才建 Release（手动构建只留 artifact，避免污染发布页）
+      - name: 附加到 Release
+        if: steps.gate.outputs.run == 'true' && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          draft: true
+          generate_release_notes: true
