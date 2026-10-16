@@ -1,0 +1,37 @@
+{
+ "_doc": "hub node-login 真实路由响应快照。生成方式：hapi/hub 里用 createNodeLoginPublicRoutes+AuthedRoutes 跑完整流程落盘（见提交说明）。字段漂移时重新生成。",
+ "responses": {
+  "start": {
+   "status": 200,
+   "body": "{\"deviceCode\":\"bg7QPHBJeZI_KJwERI8jIawZ-aHvKtkOz1Cz75B3Vso\",\"userCode\":\"S8UZ-XP2Y\",\"verificationUrl\":\"https://x/hapi/node-login?code=S8UZ-XP2Y\",\"expiresIn\":600,\"interval\":5}"
+  },
+  "poll_pending": {
+   "status": 200,
+   "body": "{\"status\":\"pending\"}"
+  },
+  "poll_slow": {
+   "status": 429,
+   "body": "{\"error\":\"slow_down\",\"interval\":10}"
+  },
+  "poll_approved": {
+   "status": 200,
+   "body": "{\"status\":\"approved\",\"serverUrl\":\"https://x/hapi/hanako\",\"agentId\":\"team--alice\",\"nodeName\":\"laptop\",\"credentialSecret\":\"hana_dev_NODE\",\"credentialId\":\"cred_new\",\"expiresAt\":\"2026-10-12T00:00:00.000Z\"}"
+  },
+  "poll_expired": {
+   "status": 200,
+   "body": "{\"status\":\"expired\"}"
+  },
+  "poll_denied": {
+   "status": 200,
+   "body": "{\"status\":\"denied\"}"
+  },
+  "renew_ok": {
+   "status": 200,
+   "body": "{\"credentialSecret\":\"hana_dev_ROT\",\"credentialId\":\"cred_r\",\"expiresAt\":\"2026-10-19T00:00:00.000Z\"}"
+  },
+  "renew_401": {
+   "status": 401,
+   "body": "{\"error\":\"credential_rejected\"}"
+  }
+ }
+}
