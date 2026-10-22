@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>在这台电脑上执行命令</title>
+<link rel="stylesheet" href="native.css">
+<style>
+  .cmd{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-all;
+       max-height:170px;overflow:auto;padding:9px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg)}
+  .cwd{font:12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text-light);word-break:break-all}
+  .ro{font-size:12px;color:var(--gold);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;padding:7px 9px}
+</style>
+</head>
+<body>
+  <!-- 禁用 iframe（CVE-2024-35222）：本文件不含任何 iframe -->
+  <div class="wb" id="root"></div>
+  <script src="i18n.js"></script>
+  <script src="ui-common.js"></script>
+  <script src="command-ask.js"></script>
+</body></html>
