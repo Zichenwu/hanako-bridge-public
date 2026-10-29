@@ -1,0 +1,9 @@
+# Windows 静态链接 C 运行库（VCRUNTIME140.dll / VCRUNTIME140_1.dll / UCRT）。
+# 不加时 exe 动态依赖 VC++ Redistributable，干净 Windows 机器启动即报
+# 「由于找不到 VCRUNTIME140.dll，无法继续执行代码」（2026-10-22 用户实报）。
+# NSIS 只引导 WebView2，不装 VC++ 运行库，所以必须静态链接。
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
